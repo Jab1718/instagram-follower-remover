@@ -294,18 +294,34 @@
     return added;
   }
 
-  function doScan() {
+  // ─── Find the scrollable container inside IG's followers dialog ─────────────
+  function getScrollContainer() {
+    // IG dialog has a scrollable div inside [role="dialog"]
+    const dialog = document.querySelector('[role="dialog"]');
+    if (!dialog) return null;
+    // Walk children to find the one that actually overflows
+    const candidates = dialog.querySelectorAll('*');
+    for (const el of candidates) {
+      const style = window.getComputedStyle(el);
+      if ((style.overflowY === 'scroll' || style.overflowY === 'auto') && el.scrollHeight > el.clientHeight) {
+        return el;
+      }
+    }
+    return dialog;
+  }
+
+  // ─── Auto-scroll to load all followers, then scan ────────────────────────────
+  async function autoLoadAndScan() {
     if (state.scanning) return;
     state.scanning = true;
-    elScanBtn.textContent = '⟳ Scanning…';
+    state.stopRequested = false;
+
+    elScanBtn.textContent = '⟳ Loading…';
     elScanBtn.classList.add('active');
     elTitle.classList.add('scanning');
     elTitle.classList.remove('ready');
 
-    const discovered = scanFollowers();
-    mergeFollowers(discovered);
-
-    // MutationObserver to catch lazily loaded followers
+    // Set up MutationObserver first so we catch everything during scroll
     if (state.scanObserver) state.scanObserver.disconnect();
     const root = document.querySelector('[role="dialog"]') || document.querySelector('main');
     if (root) {
@@ -314,11 +330,44 @@
         const added = mergeFollowers(newOnes);
         if (added > 0) {
           elStatFound.textContent = state.followers.filter(f => !state.removed.has(f.username)).length;
-          renderList();
+          elScanBtn.textContent = `⟳ Loading… (${state.followers.length})`;
         }
       });
       state.scanObserver.observe(root, { childList: true, subtree: true });
     }
+
+    // Do an initial scan of what's visible
+    mergeFollowers(scanFollowers());
+
+    // Auto-scroll loop
+    const scrollEl = getScrollContainer();
+    if (scrollEl) {
+      let prevCount = 0;
+      let staleTicks = 0;
+
+      while (!state.stopRequested) {
+        // Scroll to bottom
+        scrollEl.scrollTop = scrollEl.scrollHeight;
+        await sleep(600);
+
+        // Also try scrolling the window just in case
+        window.scrollTo(0, document.body.scrollHeight);
+
+        const currentCount = state.followers.length;
+        if (currentCount === prevCount) {
+          staleTicks++;
+          // Wait a bit longer in case IG is slow to respond
+          if (staleTicks >= 4) break; // no new items after ~2.4s → we're at the end
+        } else {
+          staleTicks = 0;
+        }
+        prevCount = currentCount;
+        elScanBtn.textContent = `⟳ Loading… (${state.followers.length})`;
+      }
+    }
+
+    // Final scan pass to make sure nothing was missed
+    mergeFollowers(scanFollowers());
 
     state.scanning = false;
     elScanBtn.textContent = `⟳ Rescan (${state.followers.length})`;
@@ -328,6 +377,10 @@
 
     renderList();
     updateStats();
+  }
+
+  function doScan() {
+    autoLoadAndScan();
   }
 
   // ─── React-compatible click ───────────────────────────────────────────────────
