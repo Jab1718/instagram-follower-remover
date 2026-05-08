@@ -1,0 +1,569 @@
+/* IG Follower Remover Panel */
+#igfr-panel {
+  position: fixed;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-50%);
+  width: 320px;
+  max-height: 80vh;
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #f5f5f5;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  user-select: none;
+  overflow: hidden;
+}
+
+#igfr-panel * {
+  box-sizing: border-box;
+}
+
+/* Header */
+#igfr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #1e1e1e;
+  cursor: move;
+  flex-shrink: 0;
+}
+
+#igfr-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #888;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#igfr-title::before {
+  content: '';
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff3b30;
+}
+
+#igfr-title.scanning::before {
+  background: #ffcc00;
+  animation: igfr-pulse 1s ease-in-out infinite;
+}
+
+#igfr-title.ready::before {
+  background: #34c759;
+}
+
+@keyframes igfr-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+#igfr-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1e1e1e;
+  border: none;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+
+#igfr-close:hover {
+  background: #2e2e2e;
+  color: #ccc;
+}
+
+/* Stats bar */
+#igfr-stats {
+  display: flex;
+  padding: 10px 16px;
+  gap: 12px;
+  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+}
+
+.igfr-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.igfr-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f5f5f5;
+  line-height: 1;
+}
+
+.igfr-stat-label {
+  font-size: 10px;
+  color: #555;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.igfr-stat-divider {
+  width: 1px;
+  background: #1e1e1e;
+  align-self: stretch;
+  margin: 4px 0;
+}
+
+/* Toolbar */
+#igfr-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 6px;
+  border-bottom: 1px solid #1a1a1a;
+  flex-shrink: 0;
+}
+
+#igfr-scan-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #1a1a1a;
+  color: #999;
+  letter-spacing: 0.02em;
+}
+
+#igfr-scan-btn:hover {
+  background: #222;
+  color: #ccc;
+}
+
+#igfr-scan-btn.active {
+  background: #1a1a2a;
+  color: #6b8cff;
+}
+
+#igfr-select-all {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #222;
+  background: transparent;
+  color: #666;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+#igfr-select-all:hover {
+  border-color: #333;
+  color: #aaa;
+}
+
+#igfr-select-all.all-selected {
+  border-color: #6b8cff;
+  color: #6b8cff;
+}
+
+/* Search */
+#igfr-search-wrap {
+  padding: 8px 12px 4px;
+  flex-shrink: 0;
+}
+
+#igfr-search {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid #1e1e1e;
+  background: #111;
+  color: #f5f5f5;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+#igfr-search::placeholder { color: #444; }
+#igfr-search:focus { border-color: #333; }
+
+/* Follower list */
+#igfr-list-wrap {
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a2a transparent;
+  min-height: 80px;
+}
+
+#igfr-list-wrap::-webkit-scrollbar { width: 4px; }
+#igfr-list-wrap::-webkit-scrollbar-track { background: transparent; }
+#igfr-list-wrap::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+
+.igfr-follower {
+  display: flex;
+  align-items: center;
+  padding: 7px 14px;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-radius: 6px;
+  margin: 0 4px;
+}
+
+.igfr-follower:hover { background: #111; }
+
+.igfr-follower.igfr-removed {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.igfr-follower.igfr-removing {
+  opacity: 0.5;
+}
+
+.igfr-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid #333;
+  background: transparent;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+}
+
+.igfr-follower.selected .igfr-check {
+  background: #6b8cff;
+  border-color: #6b8cff;
+}
+
+.igfr-follower.selected .igfr-check::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 5px;
+  border-left: 1.5px solid #fff;
+  border-bottom: 1.5px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.igfr-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #1e1e1e;
+}
+
+.igfr-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e1e2e, #2a1e2e);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #555;
+  font-weight: 600;
+}
+
+.igfr-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.igfr-username {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e8e8e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.igfr-fullname {
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.igfr-remove-badge {
+  font-size: 10px;
+  color: #ff3b30;
+  font-weight: 600;
+  opacity: 0;
+}
+
+.igfr-follower.igfr-removing .igfr-remove-badge {
+  opacity: 1;
+}
+
+/* Empty state */
+#igfr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  color: #444;
+  font-size: 12px;
+  text-align: center;
+  gap: 8px;
+}
+
+#igfr-empty-icon {
+  font-size: 28px;
+  opacity: 0.4;
+}
+
+/* Speed control */
+#igfr-speed-wrap {
+  padding: 10px 14px;
+  border-top: 1px solid #1a1a1a;
+  flex-shrink: 0;
+}
+
+.igfr-speed-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.igfr-speed-label span:first-child {
+  font-size: 11px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+#igfr-speed-val {
+  font-size: 11px;
+  color: #6b8cff;
+  font-weight: 600;
+}
+
+#igfr-speed-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: #1e1e1e;
+  outline: none;
+  cursor: pointer;
+}
+
+#igfr-speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #6b8cff;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(107,140,255,0.4);
+}
+
+/* Remove button */
+#igfr-action-wrap {
+  padding: 10px 12px 14px;
+  flex-shrink: 0;
+}
+
+#igfr-remove-btn {
+  width: 100%;
+  padding: 11px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+  background: #ff3b30;
+  color: #fff;
+}
+
+#igfr-remove-btn:hover:not(:disabled) {
+  background: #ff2d20;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255,59,48,0.35);
+}
+
+#igfr-remove-btn:disabled {
+  background: #1e1e1e;
+  color: #444;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#igfr-remove-btn.running {
+  background: #333;
+  color: #ff3b30;
+}
+
+/* Progress */
+#igfr-progress {
+  height: 2px;
+  background: #1a1a1a;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+#igfr-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #6b8cff, #ff3b30);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* Toggle button (launcher) */
+#igfr-toggle {
+  position: fixed;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 9999998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  transition: all 0.2s;
+}
+
+#igfr-toggle:hover {
+  background: #111;
+  color: #f5f5f5;
+  border-color: #444;
+}
+
+#igfr-toggle.hidden {
+  display: none;
+}
+
+/* ── Filter chips ─────────────────────────────────────────────────────────── */
+#igfr-filters {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 4px;
+  flex-shrink: 0;
+}
+
+.igfr-filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1px solid #222;
+  background: transparent;
+  color: #555;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.igfr-filter-chip input[type="checkbox"] {
+  width: 11px;
+  height: 11px;
+  accent-color: #6b8cff;
+  cursor: pointer;
+  margin: 0;
+}
+
+.igfr-filter-chip:hover {
+  border-color: #333;
+  color: #aaa;
+}
+
+.igfr-filter-chip.active {
+  border-color: #6b8cff;
+  background: rgba(107, 140, 255, 0.1);
+  color: #6b8cff;
+}
+
+#igfr-chip-verified.active {
+  border-color: #3897f0;
+  background: rgba(56, 151, 240, 0.1);
+  color: #3897f0;
+}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.igfr-username-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.igfr-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.igfr-badge-verified {
+  background: rgba(56, 151, 240, 0.15);
+  color: #3897f0;
+  border: 1px solid rgba(56, 151, 240, 0.3);
+}
+
+.igfr-badge-nonfollower {
+  background: rgba(255, 59, 48, 0.12);
+  color: #ff6b62;
+  border: 1px solid rgba(255, 59, 48, 0.25);
+}
+
+.igfr-badge-follower {
+  background: rgba(52, 199, 89, 0.12);
+  color: #34c759;
+  border: 1px solid rgba(52, 199, 89, 0.25);
+}
+
+.igfr-badges-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}

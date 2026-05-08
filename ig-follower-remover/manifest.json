@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "IG Follower Remover",
+  "version": "1.0.0",
+  "description": "Bulk remove Instagram followers with a clean selection panel",
+  "permissions": [],
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "IG Follower Remover"
+  },
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
