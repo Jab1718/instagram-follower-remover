@@ -294,20 +294,33 @@
     return added;
   }
 
-  // ─── Find the scrollable container inside IG's followers dialog ─────────────
-  function getScrollContainer() {
-    // IG dialog has a scrollable div inside [role="dialog"]
+  // ─── Find ALL scrollable containers inside IG's followers dialog ──────────────
+  function getScrollContainers() {
+    const results = [];
     const dialog = document.querySelector('[role="dialog"]');
-    if (!dialog) return null;
-    // Walk children to find the one that actually overflows
-    const candidates = dialog.querySelectorAll('*');
-    for (const el of candidates) {
+    const root = dialog || document.querySelector('main') || document.body;
+
+    // Collect every element that is actually scrollable right now
+    root.querySelectorAll('*').forEach(el => {
       const style = window.getComputedStyle(el);
-      if ((style.overflowY === 'scroll' || style.overflowY === 'auto') && el.scrollHeight > el.clientHeight) {
-        return el;
+      const overflowY = style.overflowY;
+      if ((overflowY === 'scroll' || overflowY === 'auto') && el.scrollHeight > el.clientHeight + 5) {
+        results.push(el);
       }
-    }
-    return dialog;
+    });
+
+    // Sort by scrollHeight descending — the biggest scrollable area is the list
+    results.sort((a, b) => b.scrollHeight - a.scrollHeight);
+    return results;
+  }
+
+  // ─── Trigger IG's lazy-load by dispatching a scroll event on an element ──────
+  function triggerScroll(el) {
+    // 1. Hard-set scrollTop to max
+    el.scrollTop = el.scrollHeight;
+    // 2. Dispatch native scroll events so React/IG virtual list re-renders
+    el.dispatchEvent(new Event('scroll', { bubbles: true }));
+    el.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 800 }));
   }
 
   // ─── Auto-scroll to load all followers, then scan ────────────────────────────
@@ -321,13 +334,12 @@
     elTitle.classList.add('scanning');
     elTitle.classList.remove('ready');
 
-    // Set up MutationObserver first so we catch everything during scroll
+    // Set up MutationObserver FIRST to catch everything during scroll
     if (state.scanObserver) state.scanObserver.disconnect();
     const root = document.querySelector('[role="dialog"]') || document.querySelector('main');
     if (root) {
       state.scanObserver = new MutationObserver(() => {
-        const newOnes = scanFollowers();
-        const added = mergeFollowers(newOnes);
+        const added = mergeFollowers(scanFollowers());
         if (added > 0) {
           elStatFound.textContent = state.followers.filter(f => !state.removed.has(f.username)).length;
           elScanBtn.textContent = `⟳ Loading… (${state.followers.length})`;
@@ -336,37 +348,44 @@
       state.scanObserver.observe(root, { childList: true, subtree: true });
     }
 
-    // Do an initial scan of what's visible
+    // Initial scan of what's already visible
     mergeFollowers(scanFollowers());
 
-    // Auto-scroll loop
-    const scrollEl = getScrollContainer();
-    if (scrollEl) {
-      let prevCount = 0;
-      let staleTicks = 0;
+    // Auto-scroll loop — keep going until count stops growing
+    let prevCount = -1;
+    let staleTicks = 0;
+    const MAX_STALE = 6;   // 6 × 800ms = 4.8s of no new items before giving up
+    const SCROLL_INTERVAL = 800; // ms between scroll attempts
 
-      while (!state.stopRequested) {
-        // Scroll to bottom
-        scrollEl.scrollTop = scrollEl.scrollHeight;
-        await sleep(600);
+    while (!state.stopRequested) {
+      // Re-discover scroll containers every tick (dialog may re-render)
+      const containers = getScrollContainers();
 
-        // Also try scrolling the window just in case
-        window.scrollTo(0, document.body.scrollHeight);
-
-        const currentCount = state.followers.length;
-        if (currentCount === prevCount) {
-          staleTicks++;
-          // Wait a bit longer in case IG is slow to respond
-          if (staleTicks >= 4) break; // no new items after ~2.4s → we're at the end
-        } else {
-          staleTicks = 0;
-        }
-        prevCount = currentCount;
-        elScanBtn.textContent = `⟳ Loading… (${state.followers.length})`;
+      if (containers.length === 0) {
+        // No scrollable area found — dialog may not be open yet
+        await sleep(SCROLL_INTERVAL);
+        staleTicks++;
+        if (staleTicks >= MAX_STALE) break;
+        continue;
       }
+
+      // Scroll ALL candidates — IG sometimes has nested scrollers
+      containers.forEach(el => triggerScroll(el));
+
+      await sleep(SCROLL_INTERVAL);
+
+      const currentCount = state.followers.length;
+      if (currentCount === prevCount) {
+        staleTicks++;
+        if (staleTicks >= MAX_STALE) break;
+      } else {
+        staleTicks = 0; // new items appeared — reset counter
+      }
+      prevCount = currentCount;
+      elScanBtn.textContent = `⟳ Loading… (${state.followers.length})`;
     }
 
-    // Final scan pass to make sure nothing was missed
+    // Final scan pass after scrolling is done
     mergeFollowers(scanFollowers());
 
     state.scanning = false;
