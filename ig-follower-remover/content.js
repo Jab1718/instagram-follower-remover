@@ -525,11 +525,16 @@
   elFilterNonFollow.addEventListener('change', () => {
     state.filterNonFollowers = elFilterNonFollow.checked;
     $('igfr-chip-nonfollowers').classList.toggle('active', elFilterNonFollow.checked);
-    // Auto-select all NFB accounts when filter is turned on
     if (elFilterNonFollow.checked) {
+      // Auto-select all NFB accounts when filter is turned on
       state.followers
         .filter(f => !state.removed.has(f.username) && f.followsYouBack === false)
         .forEach(f => state.selected.add(f.username));
+    } else {
+      // Deselect all NFB accounts when filter is turned off
+      state.followers
+        .filter(f => f.followsYouBack === false)
+        .forEach(f => state.selected.delete(f.username));
     }
     renderList(); updateStats();
   });
