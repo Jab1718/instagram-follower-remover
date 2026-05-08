@@ -1,6 +1,7 @@
 # IG Follower Remover
 
-A Chrome extension to bulk-remove Instagram followers with filtering, selection control, and configurable speed.
+A Chrome extension to bulk-remove Instagram followers with auto-loading, filtering, selection control, and configurable speed.
+
 
 
 ---
@@ -21,15 +22,28 @@ To update after downloading new files: go to `chrome://extensions` and click the
 
 1. Go to any Instagram profile and open their **Followers** list
 2. The panel appears automatically on the right side of the screen
-3. Click **Scan followers** — the extension reads all visible Remove buttons and lists the accounts
-4. **Scroll down** in the followers dialog to load more, then **Rescan** to pick them up
-5. Use the checkboxes to select who to remove, then click **Remove selected**
+3. Click **Scan** — the extension automatically scrolls the followers dialog to the bottom, loading all followers, then lists every account
+4. Use filters, search, and checkboxes to select who to remove
+5. Click **Remove selected**
+
+> **Important:** The followers dialog must be open before clicking Scan. The extension needs the scrollable container inside the dialog to auto-load.
+
+### Auto-load
+
+When Scan is clicked, the extension:
+- Scrolls the followers dialog continuously until no new accounts appear
+- Updates the counter in real time: **⟳ Loading… (52)**
+- Stops automatically when the list is fully loaded (~2.4s with no new items)
+- Does a final scan pass to make sure nothing was missed
+
+There is no need to scroll manually anymore.
 
 ### Selection
 
 - Click any row to toggle selection
 - **Select all** selects everyone currently visible (respects active filters and search)
-- **Deselect all** appears when all visible rows are selected
+- **Deselect all** appears when all visible rows are already selected
+- Enabling the **Not following back** filter automatically selects all NFB accounts
 
 ### Filters
 
@@ -38,17 +52,15 @@ To update after downloading new files: go to `chrome://extensions` and click the
 | **Not following back** | Only accounts that do not follow you back (NFB badge) |
 | **✓ Verified** | Only verified (blue tick) accounts |
 
-Filters can be combined. The search bar also works alongside them.
+Filters can be combined with each other and with the search bar.
 
 ### Badges
 
-Each row displays badges based on data read from the Instagram DOM:
+Each row shows badges based on data read from the Instagram DOM:
 
 - `✓` — Verified account (blue)
 - `NFB` — Not Following Back (red)
 - `FB` — Following Back (green)
-
-> **Note:** Badges depend on Instagram rendering the Follow/Following button in each row. Scroll slowly through the followers list before scanning so Instagram has time to render all rows fully.
 
 ### Speed control
 
@@ -70,12 +82,11 @@ Click **■ Stop removing** at any time to pause mid-run. Already-removed accoun
 
 The extension injects a content script into all Instagram pages. When the followers dialog is open, it:
 
-1. Scans the DOM for elements containing a **Remove** button
-2. Walks up the DOM tree to find the associated username, avatar, full name, verified status, and follow-back status
-3. When removing, fires a full chain of pointer and mouse events (`pointerdown → mousedown → pointerup → mouseup → click`) to trigger Instagram's React event handlers — a plain `.click()` is not enough
-4. Waits for the confirmation popup and clicks the confirm **Remove** button automatically
-
-A `MutationObserver` watches the followers dialog for new rows loaded as you scroll, and adds them to the list automatically.
+1. Finds the scrollable container inside the dialog and scrolls it to the bottom repeatedly until no new content loads
+2. Uses a `MutationObserver` during scrolling to capture every new row as Instagram renders it
+3. For each row, walks the DOM tree to extract username, avatar, full name, verified status, and follow-back status
+4. When removing, fires a full chain of pointer and mouse events (`pointerdown → mousedown → pointerup → mouseup → click`) to trigger Instagram's React event handlers — a plain `.click()` is not enough
+5. Waits for the confirmation popup and clicks the confirm **Remove** button automatically using Instagram's known button class `_a9-- _ap36 _a9-_`
 
 ---
 
@@ -84,7 +95,7 @@ A `MutationObserver` watches the followers dialog for new rows loaded as you scr
 ```
 ig-follower-remover/
 ├── manifest.json   Chrome extension manifest (Manifest V3)
-├── content.js      Main logic — scanning, filtering, removing
+├── content.js      Main logic — auto-loading, scanning, filtering, removing
 ├── panel.css       Panel UI styles
 └── icon.png        Extension icon
 ```
@@ -93,10 +104,9 @@ ig-follower-remover/
 
 ## Limitations
 
-- Works on Instagram's English interface (`Remove` button text). Other languages may not be detected.
-- Instagram loads followers in batches — scroll down to load more before scanning.
-- NFB/Verified detection reads from the live DOM. If Instagram changes its HTML structure or class names, detection may stop working and the extension will need an update.
-- Instagram may temporarily limit actions if too many removals are made in a short session. Use a delay of 2s or more and take breaks between large runs.
+- Works on Instagram's English interface (`Remove` button text). Other languages are not detected.
+- NFB/Verified detection reads from the live DOM. If Instagram changes its HTML structure or class names, detection may break and the extension will need an update.
+- Instagram may temporarily restrict actions if too many removals are made in a short session. Use a delay of 2s or more and take breaks between large runs.
 
 ---
 
