@@ -2,6 +2,7 @@
 
 A Chrome extension to bulk-remove Instagram followers with auto-loading, filtering, selection control, and configurable speed.
 
+Made by Jab1718
 
 
 ---
